@@ -1,12 +1,16 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(taskkill /F /IM uvicorn.exe)",
-      "Bash(taskkill /F /IM python.exe)",
-      "Bash(uvicorn app.main:app --reload --host 0.0.0.0 --port 8000)",
-      "Bash(python -c \"import requests; r = requests.get\\('http://localhost:8000/health'\\); print\\('Status:', r.status_code, '| Response:', r.json\\(\\)\\)\")",
-      "Bash(git add:*)",
-      "Bash(git commit -m ':*)"
-    ]
-  }
+    "permissions": {
+		"allow": [
+		  "Read", "Write", "Edit",      // 自动批准文件操作
+		  "Bash(npm run *)",            // 允许所有 npm run 命令
+		  "Bash(git status)", 
+		  "Bash(git diff)",
+		  "WebSearch",
+		  "WebFetch(domain:github.com)"
+		],
+		"deny": [
+		  "Bash(rm -rf)",               // 永远拦截高危命令
+		  "Bash(sudo *)"
+		]
+	}
 }

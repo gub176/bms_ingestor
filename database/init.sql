@@ -109,3 +109,50 @@ CREATE TABLE IF NOT EXISTS user_devices (
 
 -- Create index on user_devices
 CREATE INDEX IF NOT EXISTS idx_user_devices_user ON user_devices(user_id);
+
+-- Status table (real-time device status signals)
+CREATE TABLE IF NOT EXISTS status (
+    device_id VARCHAR(255) REFERENCES devices(device_id) ON DELETE CASCADE,
+    timestamp TIMESTAMPTZ,
+    received_at TIMESTAMPTZ,
+    operation_status INTEGER,
+    charge_discharge_status INTEGER,
+    grid_connection_status INTEGER,
+    main_contactor_status INTEGER,
+    emergency_stop_status INTEGER,
+    battery_balancing_status INTEGER
+);
+
+-- Create indexes on status
+CREATE INDEX IF NOT EXISTS idx_status_device ON status(device_id);
+CREATE INDEX IF NOT EXISTS idx_status_timestamp ON status(timestamp);
+
+-- Device thresholds table (for alert judgment)
+CREATE TABLE IF NOT EXISTS device_thresholds (
+    device_id VARCHAR(255) PRIMARY KEY REFERENCES devices(device_id) ON DELETE CASCADE,
+    over_voltage DECIMAL(10,2),
+    under_voltage DECIMAL(10,2),
+    over_current DECIMAL(10,2),
+    over_temperature DECIMAL(10,2),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create index on device_thresholds
+CREATE INDEX IF NOT EXISTS idx_device_thresholds_device ON device_thresholds(device_id);
+
+-- Threshold templates table (reusable threshold configurations)
+CREATE TABLE IF NOT EXISTS threshold_templates (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    over_voltage DECIMAL(10,2),
+    under_voltage DECIMAL(10,2),
+    over_current DECIMAL(10,2),
+    over_temperature DECIMAL(10,2),
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes on threshold_templates
+CREATE INDEX IF NOT EXISTS idx_threshold_templates_name ON threshold_templates(name);
+CREATE INDEX IF NOT EXISTS idx_threshold_templates_default ON threshold_templates(is_default);
