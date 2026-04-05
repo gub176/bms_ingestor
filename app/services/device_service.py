@@ -47,7 +47,7 @@ class DeviceService:
 
     async def get_device_by_id(self, device_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get device details by ID"""
-        query = supabase.table("devices").select("*").eq("id", device_id)
+        query = supabase.table("devices").select("*").eq("device_id", device_id)
 
         if user_id:
             query = query.eq("user_id", user_id)
@@ -71,16 +71,18 @@ class DeviceService:
 
         # Get alert stats
         alert_result = supabase.table("alerts") \
-            .select("level, is_read") \
+            .select("severity, alert_type") \
             .eq("device_id", device_id) \
             .execute()
 
         alert_stats = {"total": 0, "unread": 0, "by_level": {}}
         if alert_result.data:
             alert_stats["total"] = len(alert_result.data)
-            alert_stats["unread"] = sum(1 for a in alert_result.data if not a.get("is_read"))
+            # Map severity to level for backward compatibility
+            alert_stats["by_level"] = {}
             for alert in alert_result.data:
-                level = alert.get("level", "unknown")
+                severity = alert.get("severity", 0)
+                level = str(severity)
                 if level not in alert_stats["by_level"]:
                     alert_stats["by_level"][level] = 0
                 alert_stats["by_level"][level] += 1
@@ -106,24 +108,22 @@ class DeviceService:
         device = await self.get_device_by_serial(serial_number)
 
         if not device:
-            # Create new device
+            # Create new device (use serial_number as device_id)
             result = supabase.table("devices") \
                 .insert({
-                    "serial_number": serial_number,
-                    "user_id": user_id,
+                    "device_id": serial_number,
                     "status": "inactive"
                 }) \
                 .execute()
             device = result.data[0]
         elif device.get("user_id"):
-            raise DeviceAlreadyBoundException(device["id"])
+            raise DeviceAlreadyBoundException(device["device_id"])
         else:
-            # Update existing device
-            result = supabase.table("devices") \
-                .update({"user_id": user_id, "status": "inactive"}) \
-                .eq("id", device["id"]) \
+            # Update existing device - bind to user via user_devices table
+            supabase.table("user_devices") \
+                .insert({"user_id": user_id, "device_id": device["device_id"], "role": "owner"}) \
                 .execute()
-            device = result.data[0]
+            device = await self.get_device_by_serial(serial_number)
 
         return device
 
@@ -131,7 +131,7 @@ class DeviceService:
         """Update device status"""
         result = supabase.table("devices") \
             .update({"status": status, "updated_at": datetime.utcnow().isoformat()}) \
-            .eq("id", device_id) \
+            .eq("device_id", device_id) \
             .execute()
 
         if not result.data:
@@ -144,11 +144,13 @@ class DeviceService:
         # Update device status
         await self.update_device_status(device_id, "offline")
 
-        # Record offline event
+        # Record offline event - use 'timestamp' column (not 'offline_at')
         supabase.table("offline_events") \
             .insert({
                 "device_id": device_id,
-                "offline_at": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat() + 'Z',
+                "reason": "offline_detection",
+                "created_at": datetime.utcnow().isoformat() + 'Z'
             }) \
             .execute()
 

@@ -21,7 +21,7 @@ class OfflineDetectionService:
 
         # Get all online devices
         result = supabase.table("devices") \
-            .select("id, serial_number, last_seen, status") \
+            .select("device_id, last_online, last_offline, status") \
             .eq("status", "online") \
             .execute()
 
@@ -29,25 +29,25 @@ class OfflineDetectionService:
         offline_count = 0
 
         for device in online_devices:
-            last_seen_str = device.get("last_seen")
-            if not last_seen_str:
+            last_online_str = device.get("last_online")
+            if not last_online_str:
                 continue
 
-            # Parse last_seen timestamp
+            # Parse last_online timestamp
             try:
-                if isinstance(last_seen_str, str):
-                    last_seen = datetime.fromisoformat(last_seen_str.replace('Z', '+00:00').replace('+00:00', ''))
+                if isinstance(last_online_str, str):
+                    last_online = datetime.fromisoformat(last_online_str.replace('Z', '+00:00').replace('+00:00', ''))
                 else:
-                    last_seen = last_seen_str
+                    last_online = last_online_str
             except (ValueError, TypeError):
-                logger.warning(f"Invalid last_seen timestamp for device {device['id']}")
+                logger.warning(f"Invalid last_online timestamp for device {device['device_id']}")
                 continue
 
             # Check if device is offline
-            if last_seen < threshold_time:
-                await device_service.mark_device_offline(device["id"])
+            if last_online < threshold_time:
+                await device_service.mark_device_offline(device["device_id"])
                 offline_count += 1
-                logger.info(f"Device {device['id']} marked as offline (last seen: {last_seen})")
+                logger.info(f"Device {device['device_id']} marked as offline (last seen: {last_online})")
 
         logger.info(f"Offline detection completed. {offline_count} devices marked as offline.")
 

@@ -24,7 +24,7 @@ class CommandService:
             "updated_at": datetime.utcnow().isoformat()
         }
 
-        result = supabase.table("remote_adjust") \
+        result = supabase.table("remote_commands") \
             .insert(command_data) \
             .execute()
 
@@ -33,7 +33,7 @@ class CommandService:
 
     async def get_command_by_id(self, command_id: str) -> Dict[str, Any]:
         """Get command by ID"""
-        result = supabase.table("remote_adjust") \
+        result = supabase.table("remote_commands") \
             .select("*") \
             .eq("id", command_id) \
             .execute()
@@ -63,7 +63,7 @@ class CommandService:
         if status in ["success", "failed"]:
             update_data["completed_at"] = datetime.utcnow().isoformat()
 
-        result = supabase.table("remote_adjust") \
+        result = supabase.table("remote_commands") \
             .update(update_data) \
             .eq("id", command_id) \
             .execute()
@@ -79,7 +79,7 @@ class CommandService:
         page_size: int = 20
     ) -> Dict[str, Any]:
         """Get command list with pagination"""
-        query = supabase.table("remote_adjust").select("*", count="exact")
+        query = supabase.table("remote_commands").select("*", count="exact")
 
         if device_id:
             query = query.eq("device_id", device_id)

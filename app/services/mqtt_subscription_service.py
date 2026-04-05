@@ -55,8 +55,12 @@ HEARTBEAT_INTERVAL = 60
 def parse_timestamp(timestamp_str: str) -> datetime:
     """Parse ISO timestamp string"""
     try:
+        # Handle malformed timestamps with both timezone offset and Z (e.g., 2026-04-05T17:33:11+08:00Z)
         if timestamp_str.endswith('Z'):
-            timestamp_str = timestamp_str[:-1] + '+00:00'
+            timestamp_str = timestamp_str[:-1]  # Remove Z
+        # Check if there's already a timezone offset
+        if '+' not in timestamp_str[10:] and timestamp_str.count('-') <= 3:  # Allow date dashes only
+            timestamp_str = timestamp_str + '+00:00'
         ts = datetime.fromisoformat(timestamp_str)
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
@@ -231,13 +235,16 @@ class MqttSubscriptionService:
         """Handle device offline (will message)"""
         reason = data.get("reason", "unknown")
         try:
+            # Convert timestamps to UTC and format with Z suffix
+            ts_str = timestamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+            received_at_str = received_at.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
             await self.queue.put({
                 "op_type": "offline_event",
                 "data": {
                     "device_id": dev_id,
-                    "timestamp": timestamp.isoformat().replace('+00:00', 'Z'),
+                    "timestamp": ts_str,
                     "reason": reason,
-                    "created_at": received_at.isoformat().replace('+00:00', 'Z'),
+                    "created_at": received_at_str,
                 }
             })
             # Also queue device_offline to update device status
@@ -291,10 +298,14 @@ class MqttSubscriptionService:
         # Parse array fields
         parsed = parse_telemetry_array(telemetry_data.copy())
 
+        # Convert timestamps to UTC and format with Z suffix
+        ts_str = timestamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+        received_at_str = received_at.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+
         record = {
             "device_id": dev_id,
-            "timestamp": timestamp.isoformat().replace('+00:00', 'Z'),
-            "received_at": received_at.isoformat().replace('+00:00', 'Z'),
+            "timestamp": ts_str,
+            "received_at": received_at_str,
             **parsed
         }
 
@@ -315,11 +326,15 @@ class MqttSubscriptionService:
         if not status_data:
             return
 
+        # Convert timestamps to UTC and format with Z suffix
+        ts_str = timestamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+        received_at_str = received_at.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+
         # Map status fields
         record = {
             "device_id": dev_id,
-            "timestamp": timestamp.isoformat().replace('+00:00', 'Z'),
-            "received_at": received_at.isoformat().replace('+00:00', 'Z'),
+            "timestamp": ts_str,
+            "received_at": received_at_str,
         }
 
         for signal_id, db_field in STATUS_FIELD_MAP.items():

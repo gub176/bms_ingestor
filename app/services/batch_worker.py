@@ -1,7 +1,7 @@
 """Batch processing worker for efficient Supabase writes"""
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 from loguru import logger
 import httpx
@@ -142,8 +142,14 @@ class BatchWorker:
                     # Update device status to offline
                     dev_id = data.get('device_id')
                     if dev_id:
+                        ts = data.get('timestamp')
+                        if ts and hasattr(ts, 'isoformat'):
+                            # Convert to UTC and format as ISO with Z suffix
+                            last_ts = ts.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+                        else:
+                            last_ts = datetime.utcnow().isoformat() + 'Z'
                         device_updates[dev_id] = {
-                            'last_offline': data.get('timestamp').isoformat().replace('+00:00', 'Z') if data.get('timestamp') else datetime.utcnow().isoformat() + 'Z',
+                            'last_offline': last_ts,
                             'status': 'offline'
                         }
                         await self.metrics.inc("device_offline_events")
@@ -152,8 +158,14 @@ class BatchWorker:
                     # Update device status to online
                     dev_id = data.get('device_id')
                     if dev_id:
+                        ts = data.get('timestamp')
+                        if ts and hasattr(ts, 'isoformat'):
+                            # Convert to UTC and format as ISO with Z suffix
+                            last_ts = ts.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+                        else:
+                            last_ts = datetime.utcnow().isoformat() + 'Z'
                         device_updates[dev_id] = {
-                            'last_online': data.get('timestamp').isoformat().replace('+00:00', 'Z') if data.get('timestamp') else datetime.utcnow().isoformat() + 'Z',
+                            'last_online': last_ts,
                             'status': 'online'
                         }
                         await self.metrics.inc("device_online_events")
@@ -220,8 +232,8 @@ class BatchWorker:
                 await self.metrics.inc("batch_telemetry", len(telemetry_batch))
 
             if status_batch:
-                result = supabase.table("status").insert(status_batch).execute()
-                logger.debug(f"Inserted {len(status_batch)} status records")
+                # Status data is used for alert detection, no need to store separately
+                logger.debug(f"Processed {len(status_batch)} status records for alert detection")
                 await self.metrics.inc("batch_status", len(status_batch))
 
             if offline_event_batch:
@@ -251,7 +263,7 @@ class BatchWorker:
                 for dev_id, updates in device_updates.items():
                     result = supabase.table("devices") \
                         .update(updates) \
-                        .eq("id", dev_id) \
+                        .eq("device_id", dev_id) \
                         .execute()
                     logger.debug(f"Updated device {dev_id}: {updates}")
 

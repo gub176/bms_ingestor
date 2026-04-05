@@ -171,18 +171,20 @@ class AlertService:
         message: str
     ) -> Dict[str, Any]:
         """Create a new alert"""
+        # Map level to severity (critical=1, warning=2, info=3)
+        severity_map = {"critical": 1, "warning": 2, "info": 3}
+        severity = severity_map.get(level.lower(), 2)
+
         result = supabase.table("alerts") \
             .insert({
                 "device_id": device_id,
-                "level": level,
-                "type": alert_type,
-                "message": message,
-                "is_read": False,
-                "created_at": datetime.utcnow().isoformat()
+                "alert_type": alert_type,
+                "severity": severity,
+                "start_time": datetime.utcnow().isoformat()
             }) \
             .execute()
 
-        logger.info(f"Alert created for device {device_id}: {alert_type} - {message}")
+        logger.info(f"Alert created for device {device_id}: {alert_type} (severity={severity})")
         return result.data[0] if result.data else {}
 
 

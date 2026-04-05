@@ -10,7 +10,7 @@ class AlertJudgmentService:
 
     async def get_device_thresholds(self, device_id: str) -> Optional[Dict[str, Any]]:
         """Get threshold configuration for a device"""
-        result = supabase.table("alert_thresholds") \
+        result = supabase.table("device_thresholds") \
             .select("*") \
             .eq("device_id", device_id) \
             .execute()

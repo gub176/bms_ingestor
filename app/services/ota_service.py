@@ -18,14 +18,8 @@ class OtaService:
         """Create a new OTA upgrade task"""
         upgrade_data = {
             "device_id": device_id,
-            "firmware_version": firmware_version,
-            "firmware_url": firmware_url,
             "status": OTAStatus.PENDING.value,
             "progress": 0,
-            "retry_count": 0,
-            "max_retries": 3,
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
         }
 
         result = supabase.table("ota_upgrades") \
@@ -98,16 +92,7 @@ class OtaService:
         update_data = {
             "status": status,
             "progress": progress,
-            "updated_at": datetime.utcnow().isoformat()
         }
-
-        if message:
-            update_data["error_message"] = message
-
-        if new_status in [OTAStatus.SUCCESS, OTAStatus.FAILED]:
-            update_data["completed_at"] = datetime.utcnow().isoformat()
-        elif not upgrade.get("started_at"):
-            update_data["started_at"] = datetime.utcnow().isoformat()
 
         result = supabase.table("ota_upgrades") \
             .update(update_data) \
@@ -125,9 +110,6 @@ class OtaService:
         """Mark an OTA upgrade as failed"""
         update_data = {
             "status": OTAStatus.FAILED.value,
-            "error_message": error_message,
-            "completed_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
         }
 
         result = supabase.table("ota_upgrades") \
@@ -145,17 +127,9 @@ class OtaService:
         if upgrade["status"] not in [OTAStatus.FAILED.value, OTAStatus.TIMEOUT.value]:
             raise ValueError(f"Cannot retry upgrade in {upgrade['status']} status")
 
-        retry_count = upgrade.get("retry_count", 0)
-        if retry_count >= upgrade.get("max_retries", 3):
-            raise ValueError(f"Max retries exceeded for upgrade {upgrade_id}")
-
         update_data = {
             "status": OTAStatus.PENDING.value,
             "progress": 0,
-            "retry_count": retry_count + 1,
-            "error_message": None,
-            "completed_at": None,
-            "updated_at": datetime.utcnow().isoformat()
         }
 
         result = supabase.table("ota_upgrades") \
@@ -163,13 +137,11 @@ class OtaService:
             .eq("id", upgrade_id) \
             .execute()
 
-        logger.info(f"OTA upgrade {upgrade_id} retried (attempt {retry_count + 1})")
+        logger.info(f"OTA upgrade {upgrade_id} retried")
         return result.data[0] if result.data else update_data
 
     async def get_stuck_upgrades(self) -> List[Dict[str, Any]]:
-        """Get upgrades that are stuck (no update in 10 minutes)"""
-        threshold_time = datetime.utcnow() - timedelta(minutes=10)
-
+        """Get upgrades that are stuck (pending/downloading/installing status)"""
         result = supabase.table("ota_upgrades") \
             .select("*") \
             .in_("status", [
@@ -177,7 +149,6 @@ class OtaService:
                 OTAStatus.DOWNLOADING.value,
                 OTAStatus.INSTALLING.value
             ]) \
-            .lt("updated_at", threshold_time.isoformat()) \
             .execute()
 
         return result.data if hasattr(result, 'data') else []

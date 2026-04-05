@@ -10,7 +10,7 @@ class ThresholdService:
 
     async def get_thresholds(self, device_id: str) -> Optional[Dict[str, Any]]:
         """Get threshold configuration for a device"""
-        result = supabase.table("alert_thresholds") \
+        result = supabase.table("device_thresholds") \
             .select("*") \
             .eq("device_id", device_id) \
             .execute()
@@ -30,7 +30,6 @@ class ThresholdService:
     ) -> Dict[str, Any]:
         """Update threshold configuration for a device"""
         update_data = {
-            "device_id": device_id,
             "updated_at": datetime.utcnow().isoformat()
         }
 
@@ -44,21 +43,21 @@ class ThresholdService:
             update_data["over_temperature"] = over_temperature
 
         # Check if thresholds exist
-        existing = supabase.table("alert_thresholds") \
-            .select("id") \
+        existing = supabase.table("device_thresholds") \
+            .select("device_id") \
             .eq("device_id", device_id) \
             .execute()
 
         if existing.data:
             # Update existing
-            result = supabase.table("alert_thresholds") \
+            result = supabase.table("device_thresholds") \
                 .update(update_data) \
                 .eq("device_id", device_id) \
                 .execute()
         else:
             # Insert new
-            result = supabase.table("alert_thresholds") \
-                .insert(update_data) \
+            result = supabase.table("device_thresholds") \
+                .insert({"device_id": device_id, **update_data}) \
                 .execute()
 
         logger.info(f"Thresholds updated for device {device_id}")
