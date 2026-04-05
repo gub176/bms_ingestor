@@ -2,7 +2,7 @@
 
 import asyncio
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Set, Tuple, Any
 from loguru import logger
 from app.models.schemas import Alert
@@ -156,7 +156,7 @@ class AlertDetector:
                             device_id=device_id,
                             alert_type=bit_name,
                             severity=alert_def["severity"],
-                            start_time=timestamp.isoformat() + "Z",
+                            start_time=timestamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z'),
                             end_time=None,
                         )
                         alerts_insert.append(alert)
@@ -168,7 +168,7 @@ class AlertDetector:
                         alerts_update.append({
                             "device_id": device_id,
                             "alert_type": bit_name,
-                            "end_time": timestamp.isoformat() + "Z",
+                            "end_time": timestamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z'),
                         })
                         await self.mark_inactive(device_id, bit_name)
                         logger.debug(f"Alert recovered: {bit_name} for {device_id}")
