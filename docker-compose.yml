@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  fastapi:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - supabase_url=${SUPABASE_URL}
+      - supabase_service_key=${SUPABASE_SERVICE_KEY}
+      - emqx_host=emqx
+      - emqx_port=1883
+      - emqx_username=admin
+      - emqx_password=public
+      - jwt_secret_key=${JWT_SECRET_KEY}
+      - jwt_algorithm=HS256
+      - jwt_expiration_minutes=10080
+      - fastapi_host=0.0.0.0
+      - fastapi_port=8000
+      - fastapi_workers=4
+      - log_level=INFO
+      - log_file=/var/log/fastapi/app.log
+    volumes:
+      - ./logs:/var/log/fastapi
+    depends_on:
+      - emqx
+
+  emqx:
+    image: emqx:5.0
+    ports:
+      - "1883:1883"
+      - "8083:8083"
+      - "8084:8084"
+      - "18083:18083"
+    environment:
+      - EMQX_DASHBOARD__default_username=admin
+      - EMQX_DASHBOARD__default_password=public
