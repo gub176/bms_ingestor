@@ -46,7 +46,7 @@ METRICS_HTML = """
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="6">
+    <meta http-equiv="refresh" content="8">
     <title>BMS Cloud Platform - Monitoring</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -71,7 +71,7 @@ METRICS_HTML = """
 <body>
     <h1>BMS Cloud Platform - Monitoring</h1>
     <div class="metrics-grid" id="metrics"></div>
-    <p style="text-align:center;margin-top:20px;color:#666;">Auto-refresh: 6s</p>
+    <p style="text-align:center;margin-top:20px;color:#666;">Auto-refresh: 8s</p>
     <script>
         const ERROR_KEYS = ['supabase_errors', 'json_errors', 'messages_dropped_total'];
 
@@ -130,7 +130,7 @@ METRICS_HTML = """
             document.getElementById('metrics').innerHTML = html;
         }
         fetchMetrics();
-        setInterval(fetchMetrics, 6000);
+        setInterval(fetchMetrics, 8000);
     </script>
 </body>
 </html>
