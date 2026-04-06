@@ -227,7 +227,7 @@ class BatchWorker:
 
         try:
             if telemetry_batch:
-                result = supabase.table("telemetry").insert(telemetry_batch).execute()
+                result = supabase.table("telemetry").upsert(telemetry_batch, on_conflict="device_id,timestamp").execute()
                 logger.debug(f"Inserted {len(telemetry_batch)} telemetry records")
                 await self.metrics.inc("batch_telemetry", len(telemetry_batch))
 

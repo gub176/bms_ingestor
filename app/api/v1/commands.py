@@ -22,7 +22,7 @@ async def receive_telemetry(data: TelemetryData):
     telemetry_data = data.dict(exclude_unset=True)
     telemetry_data["timestamp"] = data.timestamp or datetime.utcnow().isoformat()
 
-    supabase.table("telemetry").insert(telemetry_data).execute()
+    supabase.table("telemetry").upsert(telemetry_data, on_conflict="device_id,timestamp").execute()
 
     # Update device last_seen
     supabase.table("devices") \
